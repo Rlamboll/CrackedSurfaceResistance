@@ -1,0 +1,19 @@
+function [Ix,Iy]=calcI(cracksin,Vdist)
+%Calculates the current distribution, when given the cracks binary file
+%and the voltage distribution. 
+Ix=(Vdist(:,2:end)-Vdist(:,1:end-1)).*cracksin(:,1:end-1).*cracksin(:,2:end);
+Iy=(Vdist(2:end,:)-Vdist(1:end-1,:)).*cracksin(1:end-1,:).*cracksin(2:end,:);
+I2=([0*Ix(:,1) Ix].^2+[Ix 0*Ix(:,1)].^2+[0*Iy(1,:); Iy].^2+[Iy; 0*Iy(1,:)].^2);
+
+%plot the results
+%Note that this contains some magic numbers
+x=0:6/5:(size(Vdist,2)-1)*6/5;
+y=0:6/5:(size(Vdist,1)-1)*6/5;
+surf(x(1:end-1),y,log(IdistLim0),'LineStyle','none')
+v = [-9, -5];
+view([0,90])
+colorbar
+caxis(v)
+
+end
+
