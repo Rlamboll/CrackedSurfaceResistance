@@ -1,0 +1,36 @@
+function bw = binariseImage(address,crop,cropHere, MinPix)
+%Converts the image to a binary and quarters the size.
+%if crop == true, cuts file at row crophere. Seems 708 is normal crop
+%place for the stamps on the SEM files I have - below that is a label. 
+
+%inputs: file address of .tif file, limit at which a pixel is a crack,
+%whether or not to crop and the pixel at which to do so. 
+%Output: binned binary image. 
+
+%Example run: 
+%binary = binariseImage2('SEM images\SEM Nitrile chosen images\50percent 30microns 0 Degrees (2).TIF',true,708,4);
+cracks = imread(address);
+if crop==true
+    cracks = cracks(1:cropHere,:);
+end
+[N,M]=size(cracks);
+
+if mod(M, 2)==1
+    cracks = cracks(:,1:end-1);
+    M=M-1;
+end 
+
+reshBin = reshape(cracks,[2,N/2,M]);
+reshBin=sum(reshBin);
+reshBin=squeeze(reshBin)';
+reshBin = reshape(reshBin,[2,M/2,N/2]);
+reshBin=sum(reshBin);
+reshBin=squeeze(reshBin)'/4;
+reshBin=uint8(reshBin);
+
+I3 = imadjust(reshBin);
+level = graythresh(I3);
+bw = im2bw(I3,level);
+bw = ~bwareaopen(~bw, MinPix);%imposes a minimum pixel number on the cracks. 
+
+end
