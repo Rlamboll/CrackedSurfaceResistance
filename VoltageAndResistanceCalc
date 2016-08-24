@@ -1,0 +1,56 @@
+function [Vdist, Resistance] = VoltageAndResistanceCalc(cracksin,pixX,pixY,resistivity,thickness  )
+%VOLTAGEANDRESISTANCEAU calculates the voltage distribution and resistance
+%of a 2D system of cracks (either conducting or not, 1 for conducting) as given by a
+%pixellated binary file (cracks), length
+%of pixels (pixX,pixY) and overall resistivity of the non-crack points.
+%Returns voltage distribution and total resistance of the given image. If
+%only relative resistances important, all input except
+%cracksin can be 1. 
+%example run: [Vdist, Resistance]=RLVoltageAndResistanceAu3(reshBin,1,1,1,1);
+%It is safe to ignore working error singularity problem
+
+tic %count time
+[N,M] = size(cracksin);
+cracksin=double(cracksin);
+if all(cracksin(:,1)==0)
+    Resistance = inf
+    disp('invalid setup')
+else
+    cracksin = cracksin/max(max(cracksin));%normalise values - we want max. 1. 
+    
+    cracks = [zeros(1,M);cracksin;zeros(1,M)];%pad cracks to impose vertical bc
+    r2 = (pixY/pixX)^2;                                 %nondimensional constant
+    r = (pixX/pixY)^2;                                  %nondimensional constant
+    BoundaryMatrix = zeros(N*M,1);
+    BoundaryMatrix(end-N+1:end) = 1;                    %This is the matrix boundary conditions 
+    
+    EqnMatrix = sparse([],[],[],N*M,N*M,2*N+N*(M-2));   %This is the matrix premultiplying V. It is very large. 
+    EqnMatrix(1:N,1:N)=eye(N);
+    EqnMatrix(end-N+1:end,end-N+1:end)=eye(N);
+    i=1:N;
+    P = N+2;
+    
+    for j = 2:M-1
+         
+            EqnMatrix(N*(j-1)+i+N*M*(N*(j-1)+i-1)) = (-(cracks(i+1+P*(j-2))+cracks(i+1+P*(j)))*r-(cracks(i+1+1+P*(j-1))+cracks(i+1-1+P*(j-1)))).*cracks(i+1+P*(j-1));
+            EqnMatrix(N*(j-1)+i+N*M*(N*(j-2)+i-1)) = r*cracks(i+1+P*(j-2)).*cracks(i+1+P*(j-1));
+            EqnMatrix(N*(j-1)+i+N*M*(N*j+i-1)) = r*cracks(i+1+P*(j)).*cracks(i+1+P*(j-1));
+            EqnMatrix(N*(j-1)+i+N*M*(N*(j-1)+i)) = cracks(i+1+1+P*(j-1)).*cracks(i+1+P*(j-1));
+            EqnMatrix(N*(j-1)+i+N*M*(N*(j-1)+i-2)) = cracks(i+1-1+P*(j-1)).*cracks(i+1+P*(j-1));
+     
+    end
+    
+    %having constructed matrices, solve all equations simultaneously. 
+    Vdist = EqnMatrix\BoundaryMatrix;
+    Vdist = reshape(Vdist,[N,M]);
+    %Places where voltage is not defined are irrelevent to our plot. 
+    Vdist(cracksin==0)=0;
+    Vdist(isnan(Vdist))=0;                  
+
+
+    %total resistance calculation from any column - use first to second arbitrarily
+    Resistance = thickness*pixY/resistivity/sum((Vdist(:,2)-Vdist(:,1)).*cracksin(:,1).*cracksin(:,2));
+  Idist=(Vdist(:,2:end)-Vdist(:,1:end-1)).*cracksin(:,1:end-1).*cracksin(:,2:end)
+end
+toc %display time
+end
